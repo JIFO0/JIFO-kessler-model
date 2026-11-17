@@ -1,0 +1,4 @@
+Parametr,Korelacja z Ryzykiem,Standaryzowany Wpływ (Beta),Kierunek Wpływu
+beta_multiplier,0.4764,0.4831,Zwiększa ryzyko
+growth_multiplier,0.1304,0.149,Zwiększa ryzyko
+pmd_compliance_shift,-0.0001,0.0195,Zwiększa ryzyko

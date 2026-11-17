@@ -1,0 +1,1259 @@
+<!DOCTYPE html>
+<html lang="pl" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Symulator Ryzyka Kesslera</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Inter"', 'system-ui', '-apple-system', 'sans-serif'],
+                        mono: ['"Inter"', 'system-ui', '-apple-system', 'sans-serif']
+                    },
+                    colors: {
+                        obs: {
+                            950: '#06080C',
+                            900: '#0B0E14',
+                            850: '#10141D',
+                            800: '#151B26',
+                            700: '#1E2636',
+                            600: '#2B364B'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #06080C; color: #E2E8F0; font-family: 'Inter', system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: #1E2636;
+            height: 4px;
+            border-radius: 2px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 13px;
+            height: 13px;
+            border-radius: 2px;
+            background: #38BDF8;
+            cursor: pointer;
+            border: 1px solid #0B0E14;
+            transition: transform 0.12s ease, background-color 0.12s ease;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.18);
+            background: #7DD3FC;
+        }
+        .panel {
+            background-color: #0B0E14;
+            border: 1px solid #1E2636;
+            border-radius: 6px;
+        }
+        .panel-inner {
+            background-color: #10141D;
+            border: 1px solid #1E2636;
+            border-radius: 4px;
+        }
+        @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .spinner-ring {
+            width: 14px; height: 14px;
+            border: 2px solid rgba(56,189,248,0.25);
+            border-top-color: #38BDF8;
+            border-radius: 50%;
+            animation: spin-slow 0.7s linear infinite;
+        }
+        #orbit3dContainer canvas { cursor: grab; display: block; }
+        #orbit3dContainer canvas:active { cursor: grabbing; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans antialiased selection:bg-sky-500/30">
+
+    <!-- Top Navigation Bar -->
+    <header class="bg-obs-900 border-b border-obs-700 px-5 py-3 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-50">
+        <div class="flex items-center gap-6">
+            <a href="/" class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded border border-sky-500/40 bg-sky-500/10 flex items-center justify-center">
+                    <svg class="w-4 h-4 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <circle cx="12" cy="12" r="4"/>
+                        <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(28 12 12)"/>
+                        <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(-28 12 12)"/>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-sm font-semibold text-slate-100">
+                        Symulator Ryzyka Kesslera
+                    </h1>
+                    <p class="text-[11px] text-slate-400">
+                        Horyzont 2026–2126 &middot; Warstwy LEO
+                    </p>
+                </div>
+            </a>
+
+            <nav class="hidden sm:flex items-center gap-1 text-xs">
+                <a href="/" class="px-3 py-1.5 rounded bg-obs-800 text-sky-400 font-medium">Symulator</a>
+                <a href="/zrodla" class="px-3 py-1.5 rounded text-slate-300 hover:text-white hover:bg-obs-800 transition-colors">Źródła i twórca</a>
+                <button id="openFeedbackBtn" class="px-3 py-1.5 rounded text-slate-300 hover:text-white hover:bg-obs-800 transition-colors">Prześlij opinię</button>
+            </nav>
+        </div>
+
+        <div class="flex items-center gap-3">
+            <a href="https://jifo.dev" target="_blank" rel="noopener noreferrer" class="hidden md:inline text-xs text-slate-400 hover:text-sky-400 transition-colors">
+                jifo.dev
+            </a>
+            <button id="runBtn" class="px-4 py-1.5 rounded bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold transition-colors flex items-center gap-2">
+                <span id="btnSpinner" class="hidden spinner-ring"></span>
+                <span id="btnText">Przelicz model</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 max-w-[1840px] w-full mx-auto p-4 lg:p-5 grid grid-cols-1 lg:grid-cols-12 gap-4">
+
+        <!-- Left Control Sidebar (3 cols) -->
+        <aside class="lg:col-span-3 space-y-4">
+
+            <!-- Scenario Preset -->
+            <div class="panel p-4 space-y-2.5">
+                <div class="flex items-center justify-between">
+                    <span class="text-[11px] font-mono uppercase tracking-wider text-slate-400">Scenariusz bazowy</span>
+                    <button id="resetParamsBtn" class="text-[11px] font-mono text-sky-400 hover:text-sky-300">Reset</button>
+                </div>
+                <select id="presetSelect" class="w-full bg-obs-850 border border-obs-700 rounded px-3 py-2 text-xs font-medium text-slate-100 focus:outline-none focus:border-sky-500">
+                    {% for key, p in presets.items() %}
+                        <option value="{{ key }}" {% if key == 'realistic_2026' %}selected{% endif %}>{{ p.name }}</option>
+                    {% endfor %}
+                </select>
+                <p id="presetDesc" class="text-[11px] text-slate-400 leading-relaxed pt-1"></p>
+            </div>
+
+            <!-- Model Parameters -->
+            <div class="panel p-4 space-y-3.5">
+                <div class="text-[11px] font-mono uppercase tracking-wider text-slate-400 border-b border-obs-700 pb-2">
+                    Parametry wejściowe
+                </div>
+
+                <div>
+                    <div class="flex justify-between text-[11px] mb-1">
+                        <span class="text-slate-300">Mnożnik startów (<i>g</i>)</span>
+                        <span id="gVal" class="font-mono text-sky-400">1.2x</span>
+                    </div>
+                    <input type="range" id="gSlider" min="0.3" max="2.5" step="0.1" value="1.2" class="w-full">
+                </div>
+
+                <div>
+                    <div class="flex justify-between text-[11px] mb-1">
+                        <span class="text-slate-300">Przesunięcie PMD</span>
+                        <span id="pmdVal" class="font-mono text-sky-400">+1%</span>
+                    </div>
+                    <input type="range" id="pmdSlider" min="-0.15" max="0.06" step="0.01" value="0.01" class="w-full">
+                </div>
+
+                <div>
+                    <div class="flex justify-between text-[11px] mb-1">
+                        <span class="text-slate-300">Fragmentacja (&beta; SSBM)</span>
+                        <span id="betaVal" class="font-mono text-sky-400">1.0x</span>
+                    </div>
+                    <input type="range" id="betaSlider" min="0.4" max="2.2" step="0.1" value="1.0" class="w-full">
+                </div>
+
+                <div>
+                    <div class="flex justify-between text-[11px] mb-1">
+                        <span class="text-slate-300">Skuteczność CAM</span>
+                        <span id="camVal" class="font-mono text-sky-400">0%</span>
+                    </div>
+                    <input type="range" id="camSlider" min="-0.10" max="0.03" step="0.01" value="0.00" class="w-full">
+                </div>
+
+                <div>
+                    <div class="flex justify-between text-[11px] mb-1">
+                        <span class="text-slate-300">Czas życia Low LEO (&tau;<sub>life</sub>)</span>
+                        <span id="satLifeVal" class="font-mono text-sky-400">5.0 lat</span>
+                    </div>
+                    <input type="range" id="satLifeSlider" min="2.0" max="10.0" step="0.5" value="5.0" class="w-full">
+                </div>
+
+                <div>
+                    <div class="flex justify-between text-[11px] mb-1">
+                        <span class="text-slate-300">Rok oceny KPI</span>
+                        <span id="yearVal" class="font-mono text-emerald-400">2050</span>
+                    </div>
+                    <input type="range" id="yearSlider" min="2030" max="2126" step="1" value="2050" class="w-full">
+                </div>
+
+                <div class="pt-2 border-t border-obs-700">
+                    <span class="text-[11px] font-mono uppercase text-slate-400 block mb-2">Tryb obliczeń</span>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="flex items-center gap-2 panel-inner px-2.5 py-2 cursor-pointer hover:border-sky-500/60">
+                            <input type="radio" name="simMode" value="deterministic" checked class="accent-sky-500">
+                            <span class="text-[11px] text-slate-200">Deterministyczny</span>
+                        </label>
+                        <label class="flex items-center gap-2 panel-inner px-2.5 py-2 cursor-pointer hover:border-sky-500/60">
+                            <input type="radio" name="simMode" value="monte_carlo" class="accent-sky-500">
+                            <span class="text-[11px] text-slate-200">Monte Carlo</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Particle Size Spectrum Concept Panel -->
+            <div class="panel p-4 space-y-3">
+                <div class="flex items-center justify-between border-b border-obs-700 pb-2">
+                    <span class="text-[11px] font-mono uppercase tracking-wider text-slate-400">Spektrum rozmiarów cząstek</span>
+                    <span class="text-[10px] font-mono text-slate-500">NASA SSBM</span>
+                </div>
+                <p class="text-[11px] text-slate-400 leading-relaxed">
+                    Rozkład potęgowy <i>N</i>(<i>L</i><sub>c</sub>) &prop; <i>L</i><sub>c</sub><sup>&minus;1.71</sup> sprawia, że każda kolizja generuje rzędy wielkości więcej drobnych, niewidocznych odłamków niż dużych wraków.
+                </p>
+
+                <!-- 4 Size Classes with visual scale & live count -->
+                <div class="space-y-2 text-[11px]">
+                    <div class="panel-inner p-2.5 flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-3.5 h-3.5 rounded-full bg-emerald-400 shrink-0"></span>
+                            <div>
+                                <div class="font-semibold text-slate-200">Aktywne satelity (X) &gt; 1 m</div>
+                                <div class="text-[10px] text-slate-400">Śledzone &middot; Manewry CAM 95–99.9%</div>
+                            </div>
+                        </div>
+                        <span id="specCountX" class="font-mono text-emerald-400 font-semibold">--</span>
+                    </div>
+
+                    <div class="panel-inner p-2.5 flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-2.5 h-2.5 rounded-sm bg-amber-400 shrink-0 ml-0.5 mr-0.5"></span>
+                            <div>
+                                <div class="font-semibold text-slate-200">Duże odłamki (D<sub>10</sub>) &gt; 10 cm</div>
+                                <div class="text-[10px] text-slate-400">Katalogowane &middot; Zderzenie katastroficzne</div>
+                            </div>
+                        </div>
+                        <span id="specCountD10" class="font-mono text-amber-400 font-semibold">--</span>
+                    </div>
+
+                    <div class="panel-inner p-2.5 flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0 ml-1 mr-1"></span>
+                            <div>
+                                <div class="font-semibold text-slate-200">Niekatalogowane (D<sub>1</sub>) 1–10 cm</div>
+                                <div class="text-[10px] text-slate-400">Ślepe dla CAM &middot; Śmiertelne (E &gt; 40 kJ/kg)</div>
+                            </div>
+                        </div>
+                        <span id="specCountD1" class="font-mono text-rose-400 font-semibold">--</span>
+                    </div>
+
+                    <div class="panel-inner p-2.5 flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-1 h-1 rounded-full bg-violet-400 shrink-0 ml-1.5 mr-1"></span>
+                            <div>
+                                <div class="font-semibold text-slate-200">Mikroodłamki (D<sub>01</sub>) 1 mm–1 cm</div>
+                                <div class="text-[10px] text-slate-400">Erozja paneli, przebicia osłon i awarie</div>
+                            </div>
+                        </div>
+                        <span id="specCountD01" class="font-mono text-violet-400 font-semibold">--</span>
+                    </div>
+                </div>
+            </div>
+
+        </aside>
+
+        <!-- Right Main Telemetry Area (9 cols) -->
+        <section class="lg:col-span-9 space-y-4">
+
+            <!-- KPI Telemetry Strip -->
+            <div class="grid grid-cols-2 xl:grid-cols-4 gap-3">
+                <div class="panel p-3.5">
+                    <div class="flex items-center justify-between text-[11px] font-mono text-slate-400">
+                        <span>P(KASKADA KESSLERA)</span>
+                        <span id="kpiStatusBadge" class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-obs-800 text-slate-300">--</span>
+                    </div>
+                    <div id="kpiTargetProb" class="text-2xl font-mono font-bold text-slate-100 mt-1.5">--%</div>
+                    <div id="kpiTargetYearText" class="text-[11px] text-slate-400 font-mono mt-0.5">do 2050 r.</div>
+                </div>
+
+                <div class="panel p-3.5">
+                    <div class="text-[11px] font-mono text-slate-400">MEDIUM LEO (600–1100 km)</div>
+                    <div id="kpiMedProb" class="text-2xl font-mono font-bold text-amber-400 mt-1.5">--%</div>
+                    <div class="text-[11px] text-slate-400 font-mono mt-0.5 flex justify-between">
+                        <span id="kpiCatProbText">Kolizja: --%</span>
+                        <span>Próg: <strong id="kpiCriticalYear" class="text-slate-200">--</strong></span>
+                    </div>
+                </div>
+
+                <div class="panel p-3.5">
+                    <div class="text-[11px] font-mono text-slate-400">SZCZYTOWE R<sub>K</sub> (MEDIUM)</div>
+                    <div id="kpiPeakRk" class="text-2xl font-mono font-bold text-sky-400 mt-1.5">--</div>
+                    <div class="text-[11px] text-slate-400 font-mono mt-0.5 flex justify-between">
+                        <span>Próg krytyczny: 1.00</span>
+                        <span>2026: <strong id="kpiRk2026" class="text-slate-200">--</strong></span>
+                    </div>
+                </div>
+
+                <div class="panel p-3.5">
+                    <div class="text-[11px] font-mono text-slate-400">FLOTA SATELITÓW (2035)</div>
+                    <div id="kpiSats2035" class="text-2xl font-mono font-bold text-emerald-400 mt-1.5">--</div>
+                    <div class="text-[11px] text-slate-400 font-mono mt-0.5 flex justify-between">
+                        <span>Globalnie</span>
+                        <span>2026: <strong id="kpiSats2026" class="text-slate-200">--</strong></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3D Rotatable Orbital Viewport + Timeline & Shell Telemetry -->
+            <div class="panel p-4">
+                <div class="flex flex-wrap items-center justify-between gap-3 pb-3 mb-3 border-b border-obs-700">
+                    <div>
+                        <h2 class="text-xs font-mono uppercase tracking-wider text-slate-200 font-semibold">
+                            Interaktywna Symulacja Orbitalna 3D (Przeciągnij aby obracać, scrolluj aby przybliżyć)
+                        </h2>
+                        <p class="text-[11px] text-slate-400 mt-0.5">
+                            Nachylone powłoki 53° (Starlink), 98° SSO (Medium) i 83° (High) z animacją zderzeń i cyklu słonecznego.
+                        </p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-1.5">
+                        <button data-cam="iso" class="cam-btn px-2.5 py-1 rounded text-[11px] font-mono bg-sky-600/20 text-sky-300 border border-sky-500/40">3D</button>
+                        <button data-cam="polar" class="cam-btn px-2.5 py-1 rounded text-[11px] font-mono bg-obs-850 text-slate-300 border border-obs-700 hover:border-slate-500">Biegun</button>
+                        <button data-cam="eq" class="cam-btn px-2.5 py-1 rounded text-[11px] font-mono bg-obs-850 text-slate-300 border border-obs-700 hover:border-slate-500">Równik</button>
+                        <button id="autoRotateBtn" class="px-2.5 py-1 rounded text-[11px] font-mono bg-obs-850 text-emerald-400 border border-obs-700 hover:border-emerald-500/50">Auto-Obrót: ON</button>
+                    </div>
+                </div>
+
+                <!-- Timeline Controls -->
+                <div class="panel-inner px-3 py-2.5 mb-3 flex flex-wrap items-center gap-3">
+                    <button id="animPlayBtn" class="px-3 py-1 rounded bg-obs-800 border border-obs-600 hover:border-sky-500 text-xs font-mono text-slate-100 min-w-[76px]">
+                        PAUZA
+                    </button>
+                    <select id="animSpeedSelect" class="bg-obs-800 border border-obs-600 rounded px-2 py-1 text-xs font-mono text-slate-200">
+                        <option value="1">1x</option>
+                        <option value="2" selected>2x</option>
+                        <option value="5">5x</option>
+                    </select>
+                    <span id="animYearDisplay" class="font-mono text-sm font-bold text-sky-400 min-w-[54px]">2026</span>
+                    <input type="range" id="animYearSlider" min="0" max="100" value="0" class="flex-1 min-w-[140px]">
+                    <span id="animEventBadge" class="font-mono text-[11px] px-2.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                        STABILNY
+                    </span>
+                </div>
+
+                <!-- 3D Viewport + Shell Status Grid -->
+                <div class="grid grid-cols-1 xl:grid-cols-12 gap-4">
+                    <div class="xl:col-span-8 relative">
+                        <div id="orbit3dContainer" class="w-full h-[390px] bg-obs-950 rounded border border-obs-700 overflow-hidden relative">
+                            <!-- HUD Top-Left: Layer toggles -->
+                            <div class="absolute top-2.5 left-2.5 z-10 flex flex-wrap gap-1.5">
+                                <button data-layer="X" class="layer-toggle px-2 py-1 rounded text-[10px] font-mono bg-obs-900/90 border border-emerald-500/50 text-emerald-300">X (&gt;1m)</button>
+                                <button data-layer="D10" class="layer-toggle px-2 py-1 rounded text-[10px] font-mono bg-obs-900/90 border border-amber-500/50 text-amber-300">D10 (&gt;10cm)</button>
+                                <button data-layer="D1" class="layer-toggle px-2 py-1 rounded text-[10px] font-mono bg-obs-900/90 border border-rose-500/50 text-rose-300">D1 (1-10cm)</button>
+                                <button data-layer="D01" class="layer-toggle px-2 py-1 rounded text-[10px] font-mono bg-obs-900/90 border border-violet-500/50 text-violet-300">D01 (1mm-1cm)</button>
+                            </div>
+                            <!-- HUD Bottom-Left: Solar Cycle Indicator -->
+                            <div class="absolute bottom-2.5 left-2.5 z-10 bg-obs-900/85 border border-obs-700 rounded px-2.5 py-1 text-[10px] font-mono text-slate-300 flex items-center gap-2">
+                                <span class="text-amber-400">CYKL SŁONECZNY (F10.7):</span>
+                                <span id="solarPhaseLabel">--</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Telemetry Column inside Visualizer -->
+                    <div class="xl:col-span-4 space-y-2.5 flex flex-col justify-between">
+                        <!-- LOW LEO -->
+                        <div class="panel-inner p-3">
+                            <div class="flex justify-between items-center text-[11px] font-mono mb-1">
+                                <span class="text-emerald-400 font-semibold">LOW LEO (200–600 km)</span>
+                                <span id="animLowRk" class="text-slate-200">R_K: --</span>
+                            </div>
+                            <div class="w-full bg-obs-800 h-1 rounded overflow-hidden mb-2">
+                                <div id="animLowBar" class="bg-emerald-400 h-1 transition-all duration-150" style="width:0%"></div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-y-1 text-[10px] font-mono text-slate-400">
+                                <span>Satelity X: <strong id="animLowX" class="text-slate-200">--</strong></span>
+                                <span>Duże D10: <strong id="animLowD10" class="text-amber-300">--</strong></span>
+                                <span>1–10cm D1: <strong id="animLowD1" class="text-rose-300">--</strong></span>
+                                <span>P(Kaskada): <strong id="animLowP" class="text-emerald-300">--%</strong></span>
+                            </div>
+                        </div>
+
+                        <!-- MEDIUM LEO -->
+                        <div class="panel-inner p-3">
+                            <div class="flex justify-between items-center text-[11px] font-mono mb-1">
+                                <span class="text-amber-400 font-semibold">MEDIUM LEO (600–1100 km)</span>
+                                <span id="animMedRk" class="text-slate-200">R_K: --</span>
+                            </div>
+                            <div class="w-full bg-obs-800 h-1 rounded overflow-hidden mb-2">
+                                <div id="animMedBar" class="bg-amber-400 h-1 transition-all duration-150" style="width:0%"></div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-y-1 text-[10px] font-mono text-slate-400">
+                                <span>Satelity X: <strong id="animMedX" class="text-slate-200">--</strong></span>
+                                <span>Duże D10: <strong id="animMedD10" class="text-amber-300">--</strong></span>
+                                <span>1–10cm D1: <strong id="animMedD1" class="text-rose-300">--</strong></span>
+                                <span>P(Kaskada): <strong id="animMedP" class="text-amber-300">--%</strong></span>
+                            </div>
+                        </div>
+
+                        <!-- HIGH LEO -->
+                        <div class="panel-inner p-3">
+                            <div class="flex justify-between items-center text-[11px] font-mono mb-1">
+                                <span class="text-violet-400 font-semibold">HIGH LEO (1100–2000 km)</span>
+                                <span id="animHighRk" class="text-slate-200">R_K: --</span>
+                            </div>
+                            <div class="w-full bg-obs-800 h-1 rounded overflow-hidden mb-2">
+                                <div id="animHighBar" class="bg-violet-400 h-1 transition-all duration-150" style="width:0%"></div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-y-1 text-[10px] font-mono text-slate-400">
+                                <span>Satelity X: <strong id="animHighX" class="text-slate-200">--</strong></span>
+                                <span>Duże D10: <strong id="animHighD10" class="text-amber-300">--</strong></span>
+                                <span>1–10cm D1: <strong id="animHighD1" class="text-rose-300">--</strong></span>
+                                <span>P(Kaskada): <strong id="animHighP" class="text-violet-300">--%</strong></span>
+                            </div>
+                        </div>
+
+                        <!-- Status Narrative -->
+                        <div id="animNarrative" class="panel-inner p-3 text-[11px] text-slate-300 leading-relaxed">
+                            Oczekiwanie na dane symulacji...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analytical Charts Panel -->
+            <div class="panel p-4">
+                <div class="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3 border-b border-obs-700">
+                    <div class="flex flex-wrap items-center gap-1.5">
+                        <button id="tabProbBtn" class="px-3 py-1.5 text-xs font-mono rounded bg-sky-600 text-white">P(K &le; t) [%]</button>
+                        <button id="tabRkBtn" class="px-3 py-1.5 text-xs font-mono rounded bg-obs-850 text-slate-300 border border-obs-700 hover:border-slate-500">Wskaźnik R<sub>K</sub>(t)</button>
+                        <button id="tabPopBtn" class="px-3 py-1.5 text-xs font-mono rounded bg-obs-850 text-slate-300 border border-obs-700 hover:border-slate-500">Populacje (X, D10, D1)</button>
+                        <button id="tabMicroBtn" class="px-3 py-1.5 text-xs font-mono rounded bg-obs-850 text-slate-300 border border-obs-700 hover:border-slate-500">Mikroodłamki (1mm–1cm)</button>
+                        <button id="tabSensBtn" class="hidden px-3 py-1.5 text-xs font-mono rounded bg-obs-850 text-slate-300 border border-obs-700 hover:border-slate-500">Wrażliwość MC</button>
+                    </div>
+                    <span id="chartUnitLabel" class="text-[11px] font-mono text-slate-400">Oś Y: % (0–100)</span>
+                </div>
+                <div class="relative w-full h-[320px]">
+                    <canvas id="mainChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Milestones Data Table -->
+            <div class="panel p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-xs font-mono uppercase tracking-wider text-slate-300">Zestawienie punktowe (2026–2100)</h3>
+                    <span class="text-[11px] font-mono text-slate-500">Wartości skumulowane</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-xs font-mono">
+                        <thead>
+                            <tr class="border-b border-obs-700 text-slate-400 bg-obs-850">
+                                <th class="py-2 px-3">ROK</th>
+                                <th class="py-2 px-3 text-rose-400">SYSTEM P(K)</th>
+                                <th class="py-2 px-3 text-amber-400">MEDIUM</th>
+                                <th class="py-2 px-3 text-violet-400">HIGH</th>
+                                <th class="py-2 px-3 text-emerald-400">LOW</th>
+                                <th class="py-2 px-3 text-pink-400">KOLIZJA KAT.</th>
+                                <th class="py-2 px-3">R_K (MED)</th>
+                                <th class="py-2 px-3">SATELITY</th>
+                            </tr>
+                        </thead>
+                        <tbody id="milestonesTableBody" class="divide-y divide-obs-800"></tbody>
+                    </table>
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <footer class="border-t border-obs-700 bg-obs-900 py-3.5 px-6 text-center text-xs text-slate-500 flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+        <span>Symulator Ryzyka Kesslera</span>
+        <span>&middot;</span>
+        <span>Twórca: <a href="https://jifo.dev" target="_blank" rel="noopener noreferrer" class="text-slate-300 hover:text-sky-400">Iwo Laskowski (jifo.dev)</a></span>
+        <span>&middot;</span>
+        <a href="/zrodla" class="text-slate-300 hover:text-sky-400">Źródła i metodologia</a>
+        <span>&middot;</span>
+        <button id="openFeedbackFooterBtn" class="text-slate-300 hover:text-sky-400">Prześlij opinię</button>
+    </footer>
+
+    <!-- Feedback Modal -->
+    <div id="feedbackModal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="panel max-w-md w-full p-5 space-y-4 shadow-2xl">
+            <div class="flex items-center justify-between border-b border-obs-700 pb-3">
+                <h3 class="text-sm font-semibold text-slate-100">Prześlij opinię o symulatorze</h3>
+                <button id="closeFeedbackBtn" class="text-xs text-slate-400 hover:text-slate-200">Zamknij</button>
+            </div>
+            <form id="modalFeedbackForm" class="space-y-3">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[11px] text-slate-400 mb-1">Autor (opcjonalnie)</label>
+                        <input id="mFbAuthor" type="text" maxlength="60" placeholder="Anonim" class="w-full bg-obs-850 border border-obs-700 rounded px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-sky-500">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] text-slate-400 mb-1">Kategoria</label>
+                        <select id="mFbCategory" class="w-full bg-obs-850 border border-obs-700 rounded px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-sky-500">
+                            <option value="Opinia">Opinia ogólna</option>
+                            <option value="Sugestia">Sugestia funkcji</option>
+                            <option value="Błąd">Zgłoszenie błędu</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[11px] text-slate-400 mb-1">Wiadomość</label>
+                    <textarea id="mFbMessage" rows="3" required minlength="3" maxlength="1500" placeholder="Twoja opinia lub uwagi..." class="w-full bg-obs-850 border border-obs-700 rounded px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-sky-500"></textarea>
+                </div>
+                <div class="flex items-center justify-between gap-2 pt-1">
+                    <span id="mFbStatus" class="text-[11px] text-slate-400"></span>
+                    <button type="submit" id="mFbSubmitBtn" class="px-3.5 py-1.5 rounded bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold">Wyślij</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const PRESETS = {{ presets | tojson }};
+        let currentChart = null;
+        let activeTab = 'prob';
+        let lastSimulationData = null;
+
+        // UI Elements
+        const presetSelect = document.getElementById('presetSelect');
+        const presetDesc = document.getElementById('presetDesc');
+        const gSlider = document.getElementById('gSlider');
+        const pmdSlider = document.getElementById('pmdSlider');
+        const betaSlider = document.getElementById('betaSlider');
+        const camSlider = document.getElementById('camSlider');
+        const satLifeSlider = document.getElementById('satLifeSlider');
+        const yearSlider = document.getElementById('yearSlider');
+        const runBtn = document.getElementById('runBtn');
+        const btnSpinner = document.getElementById('btnSpinner');
+        const btnText = document.getElementById('btnText');
+
+        presetSelect.addEventListener('change', (e) => {
+            const p = PRESETS[e.target.value];
+            if (p) {
+                presetDesc.textContent = p.description;
+                gSlider.value = p.params.g_multiplier;
+                pmdSlider.value = p.params.pmd_shift;
+                betaSlider.value = p.params.beta_multiplier;
+                camSlider.value = p.params.cam_eff_shift ?? 0.0;
+                satLifeSlider.value = p.params.sat_lifetime ?? 5.0;
+                updateSliderLabels();
+                triggerSimulation();
+            }
+        });
+
+        [gSlider, pmdSlider, betaSlider, camSlider, satLifeSlider, yearSlider].forEach(el => {
+            el.addEventListener('input', updateSliderLabels);
+        });
+
+        function updateSliderLabels() {
+            const g = parseFloat(gSlider.value);
+            document.getElementById('gVal').textContent = `${g.toFixed(1)}x (Low ${(g*5).toFixed(1)}%/r)`;
+
+            const pmd = parseFloat(pmdSlider.value);
+            document.getElementById('pmdVal').textContent = `${pmd >= 0 ? '+' : ''}${(pmd*100).toFixed(0)}% (Med ${Math.min(99.9, 90+pmd*100).toFixed(0)}%)`;
+
+            document.getElementById('betaVal').textContent = `${parseFloat(betaSlider.value).toFixed(1)}x`;
+            const cam = parseFloat(camSlider.value);
+            document.getElementById('camVal').textContent = `${cam >= 0 ? '+' : ''}${(cam*100).toFixed(0)}%`;
+            document.getElementById('satLifeVal').textContent = `${parseFloat(satLifeSlider.value).toFixed(1)} lat`;
+            document.getElementById('yearVal').textContent = `${yearSlider.value}`;
+        }
+
+        // Tabs
+        const tabs = {
+            prob: [document.getElementById('tabProbBtn'), 'Oś Y: % (0–100)'],
+            rk: [document.getElementById('tabRkBtn'), 'Oś Y: R_K (skala log)'],
+            pop: [document.getElementById('tabPopBtn'), 'Oś Y: Liczba obiektów'],
+            micro: [document.getElementById('tabMicroBtn'), 'Oś Y: Mikroodłamki 1mm–1cm (mln)'],
+            sens: [document.getElementById('tabSensBtn'), 'Oś X: Beta OLS']
+        };
+
+        function setTab(t) {
+            activeTab = t;
+            const hasSens = Boolean(lastSimulationData && lastSimulationData.sensitivity && lastSimulationData.sensitivity.length > 0);
+            Object.entries(tabs).forEach(([k, [btn, label]]) => {
+                const hideSens = (k === 'sens' && !hasSens) ? ' hidden' : '';
+                if (k === t) {
+                    btn.className = 'px-3 py-1.5 text-xs font-mono rounded bg-sky-600 text-white' + hideSens;
+                    document.getElementById('chartUnitLabel').textContent = label;
+                } else {
+                    btn.className = 'px-3 py-1.5 text-xs font-mono rounded bg-obs-850 text-slate-300 border border-obs-700 hover:border-slate-500' + hideSens;
+                }
+            });
+            if (lastSimulationData) renderChart(lastSimulationData);
+        }
+
+        Object.keys(tabs).forEach(k => tabs[k][0].addEventListener('click', () => setTab(k)));
+
+        document.getElementById('resetParamsBtn').addEventListener('click', () => {
+            presetSelect.value = 'realistic_2026';
+            presetSelect.dispatchEvent(new Event('change'));
+        });
+
+        async function triggerSimulation() {
+            btnSpinner.classList.remove('hidden');
+            btnText.textContent = 'Obliczanie...';
+            runBtn.disabled = true;
+
+            const mode = document.querySelector('input[name="simMode"]:checked').value;
+            const payload = {
+                g_multiplier: parseFloat(gSlider.value),
+                pmd_shift: parseFloat(pmdSlider.value),
+                beta_multiplier: parseFloat(betaSlider.value),
+                cam_eff_shift: parseFloat(camSlider.value),
+                sat_lifetime: parseFloat(satLifeSlider.value),
+                horizon: 2126,
+                target_year: parseInt(yearSlider.value),
+                mode: mode,
+                mc_samples: 600
+            };
+
+            try {
+                const res = await fetch('/api/simulate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.error) throw new Error(data.error);
+                lastSimulationData = data;
+
+                if (data.sensitivity && data.sensitivity.length > 0) {
+                    tabs.sens[0].classList.remove('hidden');
+                } else {
+                    tabs.sens[0].classList.add('hidden');
+                    if (activeTab === 'sens') setTab('prob');
+                }
+
+                updateKPIs(data);
+                renderChart(data);
+                renderTable(data);
+                sync3DTimeline(data);
+            } catch (err) {
+                console.error(err);
+                alert('Błąd symulacji: ' + err.message);
+            } finally {
+                btnSpinner.classList.add('hidden');
+                btnText.textContent = 'Przelicz model';
+                runBtn.disabled = false;
+            }
+        }
+
+        runBtn.addEventListener('click', triggerSimulation);
+
+        function updateKPIs(data) {
+            const k = data.kpi;
+            document.getElementById('kpiTargetProb').textContent = k.prob_target_pct;
+            document.getElementById('kpiTargetYearText').textContent = `do ${k.target_year} r. (status: horyzont 2126)`;
+            document.getElementById('kpiMedProb').textContent = k.prob_med_target_pct;
+            document.getElementById('kpiCatProbText').textContent = `Kolizja: ${k.prob_cat_target_pct}`;
+            document.getElementById('kpiCriticalYear').textContent = k.critical_year_med;
+            document.getElementById('kpiPeakRk').textContent = k.peak_rk_med;
+            document.getElementById('kpiRk2026').textContent = k.rk_med_2026;
+            document.getElementById('kpiSats2035').textContent = k.active_sats_2035;
+            document.getElementById('kpiSats2026').textContent = k.active_sats_2026;
+
+            const badge = document.getElementById('kpiStatusBadge');
+            badge.textContent = k.status_text;
+            badge.className = k.status_badge_class;
+        }
+
+        function renderTable(data) {
+            const tbody = document.getElementById('milestonesTableBody');
+            tbody.innerHTML = '';
+            data.milestones_table.forEach(r => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-obs-850/80 transition-colors';
+                tr.innerHTML = `
+                    <td class="py-2 px-3 font-semibold text-slate-200">${r.year}</td>
+                    <td class="py-2 px-3 text-rose-400 font-semibold">${r.systemic_pct}</td>
+                    <td class="py-2 px-3 text-amber-400">${r.medium_pct}</td>
+                    <td class="py-2 px-3 text-violet-400">${r.high_pct}</td>
+                    <td class="py-2 px-3 text-emerald-400">${r.low_pct}</td>
+                    <td class="py-2 px-3 text-pink-400">${r.catastrophic_pct}</td>
+                    <td class="py-2 px-3 text-slate-300">${r.rk_medium}</td>
+                    <td class="py-2 px-3 text-slate-300">${r.active_satellites}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderChart(data) {
+            const ctx = document.getElementById('mainChart').getContext('2d');
+            if (currentChart) currentChart.destroy();
+            const years = data.years;
+            const gridColor = 'rgba(30, 38, 54, 0.8)';
+            const tickColor = '#94A3B8';
+
+            if (activeTab === 'prob') {
+                const p = data.probabilities_percent;
+                const ds = [
+                    { label: 'System P(K)', data: p.systemic, borderColor: '#F43F5E', borderWidth: 2.5, tension: 0.2, pointRadius: 0 },
+                    { label: 'Medium LEO', data: p.medium, borderColor: '#F59E0B', borderWidth: 2, tension: 0.2, pointRadius: 0 },
+                    { label: 'High LEO', data: p.high, borderColor: '#A78BFA', borderWidth: 1.8, tension: 0.2, pointRadius: 0 },
+                    { label: 'Low LEO', data: p.low, borderColor: '#34D399', borderWidth: 1.8, tension: 0.2, pointRadius: 0 },
+                    { label: 'Kolizja katastrof.', data: p.catastrophic_collision, borderColor: '#EC4899', borderDash: [5,4], borderWidth: 1.5, tension: 0.2, pointRadius: 0 }
+                ];
+                if (data.fan_chart_system_pct) {
+                    ds.push({ label: 'MC System p90', data: data.fan_chart_system_pct.p90, borderColor: 'transparent', backgroundColor: 'rgba(244,63,94,0.14)', fill: '+1', pointRadius: 0 });
+                    ds.push({ label: 'MC System p10', data: data.fan_chart_system_pct.p10, borderColor: 'transparent', backgroundColor: 'transparent', pointRadius: 0 });
+                }
+                currentChart = new Chart(ctx, {
+                    type: 'line',
+                    data: { labels: years, datasets: ds },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        scales: {
+                            y: { min: 0, max: 100, grid: { color: gridColor }, ticks: { color: tickColor, callback: v => v + '%' } },
+                            x: { grid: { color: gridColor }, ticks: { color: tickColor, maxTicksLimit: 12 } }
+                        },
+                        plugins: { legend: { labels: { color: '#CBD5E1', boxWidth: 12, font: { family: 'Inter', size: 11 } } } }
+                    }
+                });
+            } else if (activeTab === 'rk') {
+                const rk = data.reproduction_rk;
+                currentChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: years,
+                        datasets: [
+                            { label: 'Medium LEO', data: rk.medium, borderColor: '#F59E0B', borderWidth: 2.5, tension: 0.25, pointRadius: 0 },
+                            { label: 'High LEO', data: rk.high, borderColor: '#A78BFA', borderWidth: 2, tension: 0.25, pointRadius: 0 },
+                            { label: 'Low LEO (Cykl 11-letni)', data: rk.low, borderColor: '#34D399', borderWidth: 2, tension: 0.25, pointRadius: 0 },
+                            { label: 'Próg R_K = 1.0', data: years.map(() => 1.0), borderColor: '#F43F5E', borderDash: [6,4], borderWidth: 1.5, pointRadius: 0 }
+                        ]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        scales: {
+                            y: { type: 'logarithmic', min: 0.01, max: 15, grid: { color: gridColor }, ticks: { color: tickColor } },
+                            x: { grid: { color: gridColor }, ticks: { color: tickColor, maxTicksLimit: 12 } }
+                        },
+                        plugins: { legend: { labels: { color: '#CBD5E1', boxWidth: 12, font: { family: 'Inter', size: 11 } } } }
+                    }
+                });
+            } else if (activeTab === 'pop') {
+                const pop = data.populations;
+                currentChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: years,
+                        datasets: [
+                            { label: 'Aktywne satelity X (Global)', data: pop.active_total, borderColor: '#38BDF8', borderWidth: 2, pointRadius: 0 },
+                            { label: 'Duże odłamki D10 >10cm (Global)', data: pop.d10_total, borderColor: '#F59E0B', borderWidth: 2, pointRadius: 0 },
+                            { label: 'Odłamki D1 1–10cm (Medium)', data: pop.d1_medium, borderColor: '#F43F5E', borderWidth: 2, pointRadius: 0 }
+                        ]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        scales: {
+                            y: { grid: { color: gridColor }, ticks: { color: tickColor, callback: v => v.toLocaleString() } },
+                            x: { grid: { color: gridColor }, ticks: { color: tickColor, maxTicksLimit: 12 } }
+                        },
+                        plugins: { legend: { labels: { color: '#CBD5E1', boxWidth: 12, font: { family: 'Inter', size: 11 } } } }
+                    }
+                });
+            } else if (activeTab === 'micro') {
+                const pop = data.populations;
+                currentChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: years,
+                        datasets: [
+                            { label: 'Medium LEO (1mm–1cm)', data: pop.d01_medium.map(v => v / 1e6), borderColor: '#A78BFA', borderWidth: 2.2, pointRadius: 0 },
+                            { label: 'High LEO (1mm–1cm)', data: pop.d01_high.map(v => v / 1e6), borderColor: '#38BDF8', borderWidth: 2, pointRadius: 0 },
+                            { label: 'Low LEO (1mm–1cm)', data: pop.d01_low.map(v => v / 1e6), borderColor: '#34D399', borderWidth: 2, pointRadius: 0 }
+                        ]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        scales: {
+                            y: { grid: { color: gridColor }, ticks: { color: tickColor, callback: v => v.toFixed(0) } },
+                            x: { grid: { color: gridColor }, ticks: { color: tickColor, maxTicksLimit: 12 } }
+                        },
+                        plugins: { legend: { labels: { color: '#CBD5E1', boxWidth: 12, font: { family: 'Inter', size: 11 } } } }
+                    }
+                });
+            } else if (activeTab === 'sens' && data.sensitivity) {
+                const s = data.sensitivity;
+                const nameMap = {
+                    beta_multiplier: 'Fragmentacja (beta SSBM)',
+                    growth_multiplier: 'Tempo startów (g)',
+                    pmd_compliance_shift: 'Dyscyplina PMD'
+                };
+                currentChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: s.map(x => nameMap[x.Parametr] || x.Parametr),
+                        datasets: [{
+                            label: 'Wpływ (Beta OLS) na P(Kessler Medium 2100)',
+                            data: s.map(x => x['Standaryzowany Wpływ (Beta)']),
+                            backgroundColor: s.map(x => x['Standaryzowany Wpływ (Beta)'] >= 0 ? 'rgba(244,63,94,0.75)' : 'rgba(52,211,153,0.75)'),
+                            borderRadius: 3
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                        scales: {
+                            x: { min: -1, max: 1, grid: { color: gridColor }, ticks: { color: tickColor } },
+                            y: { grid: { display: false }, ticks: { color: '#E2E8F0', font: { family: 'Inter', size: 11 } } }
+                        },
+                        plugins: { legend: { labels: { color: '#CBD5E1' } } }
+                    }
+                });
+            }
+        }
+
+        // =====================================================================
+        // THREE.JS 3D ROTATABLE ORBITAL MODEL & COLLISION/SOLAR ANIMATIONS
+        // =====================================================================
+        const container3d = document.getElementById('orbit3dContainer');
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(42, container3d.clientWidth / container3d.clientHeight, 0.1, 100);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setSize(container3d.clientWidth, container3d.clientHeight);
+        container3d.appendChild(renderer.domElement);
+
+        // Lighting
+        scene.add(new THREE.AmbientLight(0x94a3b8, 0.7));
+        const sunLight = new THREE.DirectionalLight(0xffffff, 1.4);
+        sunLight.position.set(12, 6, 10);
+        scene.add(sunLight);
+
+        // Earth Group
+        const earthGroup = new THREE.Group();
+        scene.add(earthGroup);
+
+        const earthGeo = new THREE.SphereGeometry(2.0, 48, 48);
+        const earthMat = new THREE.MeshPhongMaterial({
+            color: 0x0f2942,
+            emissive: 0x061322,
+            specular: 0x1e40af,
+            shininess: 22
+        });
+        earthGroup.add(new THREE.Mesh(earthGeo, earthMat));
+
+        // Graticule Wireframe around Earth
+        const gratGeo = new THREE.SphereGeometry(2.02, 24, 16);
+        const gratMat = new THREE.MeshBasicMaterial({ color: 0x1e3a5f, wireframe: true, transparent: true, opacity: 0.35 });
+        earthGroup.add(new THREE.Mesh(gratGeo, gratMat));
+
+        // Thermosphere / Solar Cycle Breathing Shell
+        const atmoGeo = new THREE.SphereGeometry(2.14, 36, 36);
+        const atmoMat = new THREE.MeshBasicMaterial({
+            color: 0x38bdf8,
+            transparent: true,
+            opacity: 0.10,
+            side: THREE.BackSide
+        });
+        const atmoMesh = new THREE.Mesh(atmoGeo, atmoMat);
+        scene.add(atmoMesh);
+
+        // Shell Rings (Low 53 deg, Medium 98 deg SSO, High 83 deg)
+        function createOrbitRing(radius, inclDeg, colorHex, opacity = 0.35) {
+            const pts = [];
+            for (let i = 0; i <= 128; i++) {
+                const a = (i / 128) * Math.PI * 2;
+                pts.push(new THREE.Vector3(Math.cos(a) * radius, 0, Math.sin(a) * radius));
+            }
+            const geo = new THREE.BufferGeometry().setFromPoints(pts);
+            const mat = new THREE.LineBasicMaterial({ color: colorHex, transparent: true, opacity: opacity });
+            const line = new THREE.Line(geo, mat);
+            line.rotation.x = THREE.MathUtils.degToRad(inclDeg);
+            scene.add(line);
+            return line;
+        }
+        const ringLow = createOrbitRing(2.45, 53, 0x34d399, 0.45);
+        const ringMed = createOrbitRing(3.15, 98, 0xf59e0b, 0.45);
+        const ringHigh = createOrbitRing(3.95, 83, 0xa78bfa, 0.35);
+
+        // Particle Pools for 4 size classes across 3 shells
+        const shellSpecs = {
+            low: { rMin: 2.30, rMax: 2.65, incl: 53, speed: 0.85 },
+            medium: { rMin: 2.95, rMax: 3.45, incl: 98, speed: 0.55 },
+            high: { rMin: 3.75, rMax: 4.25, incl: 83, speed: 0.35 }
+        };
+
+        const layerVisible = { X: true, D10: true, D1: true, D01: true };
+        const particleSystems = {};
+
+        function createParticlePool(key, count, colorHex, size) {
+            const positions = new Float32Array(count * 3);
+            const meta = [];
+            const shells = ['low', 'medium', 'high'];
+            for (let i = 0; i < count; i++) {
+                const sh = shells[i % 3];
+                const sp = shellSpecs[sh];
+                const r = sp.rMin + Math.random() * (sp.rMax - sp.rMin);
+                const inclJitter = THREE.MathUtils.degToRad(sp.incl + (Math.random() - 0.5) * 18);
+                const raan = Math.random() * Math.PI * 2;
+                const theta = Math.random() * Math.PI * 2;
+                meta.push({
+                    shell: sh,
+                    r: r,
+                    incl: inclJitter,
+                    raan: raan,
+                    theta: theta,
+                    speed: sp.speed * (0.9 + Math.random() * 0.2),
+                    slot: Math.floor(i / 3) / (count / 3)
+                });
+            }
+            const geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const mat = new THREE.PointsMaterial({ color: colorHex, size: size, transparent: true, opacity: 0.9 });
+            const pts = new THREE.Points(geo, mat);
+            scene.add(pts);
+            particleSystems[key] = { pts, geo, positions, meta, count };
+        }
+
+        createParticlePool('X', 600, 0x34d399, 0.085);
+        createParticlePool('D10', 750, 0xfbbf24, 0.068);
+        createParticlePool('D1', 1200, 0xf43f5e, 0.042);
+        createParticlePool('D01', 1800, 0xa78bfa, 0.025);
+
+        // 3D Shockwave Collision Events
+        const shockwaves3d = [];
+        function spawnShockwave3D(shellKey, isCritical) {
+            const sp = shellSpecs[shellKey];
+            const r = (sp.rMin + sp.rMax) * 0.5;
+            const incl = THREE.MathUtils.degToRad(sp.incl);
+            const raan = Math.random() * Math.PI * 2;
+            const theta = Math.random() * Math.PI * 2;
+            const pos = orbitalToVec3(r, incl, raan, theta);
+
+            const geo = new THREE.SphereGeometry(0.06, 12, 12);
+            const mat = new THREE.MeshBasicMaterial({
+                color: isCritical ? 0xf43f5e : 0xf59e0b,
+                wireframe: true,
+                transparent: true,
+                opacity: 0.9
+            });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.copy(pos);
+            scene.add(mesh);
+            shockwaves3d.push({ mesh, age: 0 });
+        }
+
+        function orbitalToVec3(r, incl, raan, theta) {
+            const xOrb = r * Math.cos(theta);
+            const zOrb = r * Math.sin(theta);
+            // Rotate by inclination around X, then RAAN around Y
+            const y1 = -zOrb * Math.sin(incl);
+            const z1 = zOrb * Math.cos(incl);
+            const x2 = xOrb * Math.cos(raan) + z1 * Math.sin(raan);
+            const z2 = -xOrb * Math.sin(raan) + z1 * Math.cos(raan);
+            return new THREE.Vector3(x2, y1, z2);
+        }
+
+        // Camera spherical orbit controller (drag + zoom)
+        let camTheta = 0.7, camPhi = 1.1, camDist = 10.5;
+        let targetTheta = 0.7, targetPhi = 1.1, targetDist = 10.5;
+        let isDragging = false, prevX = 0, prevY = 0;
+        let autoRotate = true;
+
+        container3d.addEventListener('mousedown', (e) => { isDragging = true; prevX = e.clientX; prevY = e.clientY; });
+        window.addEventListener('mouseup', () => { isDragging = false; });
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            const dx = e.clientX - prevX;
+            const dy = e.clientY - prevY;
+            prevX = e.clientX; prevY = e.clientY;
+            targetTheta -= dx * 0.007;
+            targetPhi = Math.max(0.15, Math.min(Math.PI - 0.15, targetPhi - dy * 0.007));
+        });
+        container3d.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            targetDist = Math.max(5.0, Math.min(18.0, targetDist + e.deltaY * 0.006));
+        }, { passive: false });
+
+        document.querySelectorAll('.cam-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const mode = btn.dataset.cam;
+                if (mode === 'iso') { targetTheta = 0.7; targetPhi = 1.1; targetDist = 10.5; }
+                else if (mode === 'polar') { targetTheta = 0.0; targetPhi = 0.18; targetDist = 11.0; }
+                else if (mode === 'eq') { targetTheta = 0.0; targetPhi = 1.55; targetDist = 10.5; }
+            });
+        });
+
+        const autoRotateBtn = document.getElementById('autoRotateBtn');
+        autoRotateBtn.addEventListener('click', () => {
+            autoRotate = !autoRotate;
+            autoRotateBtn.textContent = `Auto-Obrót: ${autoRotate ? 'ON' : 'OFF'}`;
+            autoRotateBtn.className = autoRotate
+                ? 'px-2.5 py-1 rounded text-[11px] font-mono bg-obs-850 text-emerald-400 border border-obs-700'
+                : 'px-2.5 py-1 rounded text-[11px] font-mono bg-obs-850 text-slate-400 border border-obs-700';
+        });
+
+        document.querySelectorAll('.layer-toggle').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const l = btn.dataset.layer;
+                layerVisible[l] = !layerVisible[l];
+                particleSystems[l].pts.visible = layerVisible[l];
+                btn.style.opacity = layerVisible[l] ? '1.0' : '0.38';
+            });
+        });
+
+        // Timeline Playback State
+        const animPlayBtn = document.getElementById('animPlayBtn');
+        const animSpeedSelect = document.getElementById('animSpeedSelect');
+        const animYearSlider = document.getElementById('animYearSlider');
+        let animPlaying = true;
+        let animFrameFloat = 0;
+        let lastTime = performance.now();
+
+        animPlayBtn.addEventListener('click', () => {
+            animPlaying = !animPlaying;
+            animPlayBtn.textContent = animPlaying ? 'PAUZA' : 'GRAJ';
+        });
+        animYearSlider.addEventListener('input', (e) => {
+            animFrameFloat = parseFloat(e.target.value);
+            updateTimelineHUD(Math.round(animFrameFloat));
+        });
+
+        function sync3DTimeline(data) {
+            animYearSlider.max = data.years.length - 1;
+            animFrameFloat = 0;
+            animYearSlider.value = 0;
+            updateTimelineHUD(0);
+        }
+
+        function updateTimelineHUD(idx) {
+            if (!lastSimulationData || idx < 0 || idx >= lastSimulationData.years.length) return;
+            const yr = lastSimulationData.years[idx];
+            document.getElementById('animYearDisplay').textContent = `${yr}`;
+            animYearSlider.value = idx;
+
+            const rkL = lastSimulationData.reproduction_rk.low[idx];
+            const rkM = lastSimulationData.reproduction_rk.medium[idx];
+            const rkH = lastSimulationData.reproduction_rk.high[idx];
+            const prob = lastSimulationData.probabilities_percent;
+            const pop = lastSimulationData.populations;
+
+            // Update Spectrum Counts
+            document.getElementById('specCountX').textContent = pop.active_total[idx].toLocaleString('pl-PL');
+            document.getElementById('specCountD10').textContent = pop.d10_total[idx].toLocaleString('pl-PL');
+            document.getElementById('specCountD1').textContent = (pop.d1_total[idx] / 1e6).toFixed(2) + ' M';
+            document.getElementById('specCountD01').textContent = (pop.d01_total[idx] / 1e6).toFixed(1) + ' M';
+
+            // Shell Bars
+            document.getElementById('animLowRk').textContent = `R_K: ${rkL.toFixed(2)}`;
+            document.getElementById('animLowBar').style.width = `${Math.min(100, rkL * 50)}%`;
+            document.getElementById('animLowX').textContent = pop.active_low[idx].toLocaleString('pl-PL');
+            document.getElementById('animLowD10').textContent = pop.d10_low[idx].toLocaleString('pl-PL');
+            document.getElementById('animLowD1').textContent = (pop.d1_low[idx]/1e3).toFixed(0) + 'k';
+            document.getElementById('animLowP').textContent = `${prob.low[idx].toFixed(1)}%`;
+
+            document.getElementById('animMedRk').textContent = `R_K: ${rkM.toFixed(2)}`;
+            document.getElementById('animMedBar').style.width = `${Math.min(100, rkM * 50)}%`;
+            document.getElementById('animMedBar').className = `h-1 transition-all duration-150 ${rkM >= 1 ? 'bg-rose-500' : 'bg-amber-400'}`;
+            document.getElementById('animMedX').textContent = pop.active_medium[idx].toLocaleString('pl-PL');
+            document.getElementById('animMedD10').textContent = pop.d10_medium[idx].toLocaleString('pl-PL');
+            document.getElementById('animMedD1').textContent = (pop.d1_medium[idx]/1e3).toFixed(0) + 'k';
+            document.getElementById('animMedP').textContent = `${prob.medium[idx].toFixed(1)}%`;
+
+            document.getElementById('animHighRk').textContent = `R_K: ${rkH.toFixed(2)}`;
+            document.getElementById('animHighBar').style.width = `${Math.min(100, rkH * 50)}%`;
+            document.getElementById('animHighX').textContent = pop.active_high[idx].toLocaleString('pl-PL');
+            document.getElementById('animHighD10').textContent = pop.d10_high[idx].toLocaleString('pl-PL');
+            document.getElementById('animHighD1').textContent = (pop.d1_high[idx]/1e3).toFixed(0) + 'k';
+            document.getElementById('animHighP').textContent = `${prob.high[idx].toFixed(1)}%`;
+
+            // Solar Cycle Phase
+            const solarPhase = Math.cos(2 * Math.PI * (yr - 2025.5) / 11.0);
+            document.getElementById('solarPhaseLabel').textContent = solarPhase > 0.35 ? 'MAKSIMUM (Szybkie opadanie)' : (solarPhase < -0.35 ? 'MINIMUM (Kumulacja)' : 'PRZEJŚCIOWY');
+
+            // Ring warning pulse
+            ringMed.material.color.setHex(rkM >= 1.0 ? 0xf43f5e : 0xf59e0b);
+            ringMed.material.opacity = rkM >= 1.0 ? 0.85 : 0.45;
+            ringLow.material.color.setHex(rkL >= 1.0 ? 0xf43f5e : 0x34d399);
+
+            const badge = document.getElementById('animEventBadge');
+            const narr = document.getElementById('animNarrative');
+            if (rkM >= 1.0) {
+                badge.textContent = 'KASKADA MEDIUM LEO';
+                badge.className = 'font-mono text-[11px] px-2.5 py-0.5 rounded bg-rose-500/20 text-rose-400 border border-rose-500/40';
+                narr.innerHTML = `<strong class="text-rose-400">Rok ${yr}:</strong> Przekroczono próg krytyczny (R_K = ${rkM.toFixed(2)}) w Medium LEO. Fragmentacja przewyższa naturalne oczyszczanie.`;
+            } else if (rkL >= 1.0) {
+                badge.textContent = 'PRZECIĄŻENIE LOW LEO';
+                badge.className = 'font-mono text-[11px] px-2.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/40';
+                narr.innerHTML = `<strong class="text-amber-400">Rok ${yr}:</strong> Gęstość konstelacji w Low LEO przekracza tymczasowo R_K = 1.0 podczas minimum słonecznego.`;
+            } else {
+                badge.textContent = 'UKŁAD STABILNY';
+                badge.className = 'font-mono text-[11px] px-2.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30';
+                narr.innerHTML = `<strong class="text-emerald-400">Rok ${yr}:</strong> Naturalne spalanie w atmosferze i manewry CAM utrzymują równowagę (Medium R_K = ${rkM.toFixed(2)}).`;
+            }
+        }
+
+        function animate3D(now) {
+            requestAnimationFrame(animate3D);
+            const dt = Math.min(0.05, (now - lastTime) / 1000.0);
+            lastTime = now;
+
+            // Resize check
+            if (container3d.clientWidth > 0 && (renderer.domElement.width !== container3d.clientWidth * renderer.getPixelRatio())) {
+                camera.aspect = container3d.clientWidth / container3d.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container3d.clientWidth, container3d.clientHeight);
+            }
+
+            if (autoRotate && !isDragging) targetTheta += dt * 0.14;
+            camTheta += (targetTheta - camTheta) * 0.08;
+            camPhi += (targetPhi - camPhi) * 0.08;
+            camDist += (targetDist - camDist) * 0.08;
+
+            camera.position.set(
+                camDist * Math.sin(camPhi) * Math.sin(camTheta),
+                camDist * Math.cos(camPhi),
+                camDist * Math.sin(camPhi) * Math.cos(camTheta)
+            );
+            camera.lookAt(0, 0, 0);
+            earthGroup.rotation.y += dt * 0.08;
+
+            if (animPlaying && lastSimulationData) {
+                const speed = parseFloat(animSpeedSelect.value);
+                animFrameFloat += dt * speed * 2.8;
+                if (animFrameFloat >= lastSimulationData.years.length - 1) animFrameFloat = 0;
+                updateTimelineHUD(Math.round(animFrameFloat));
+            }
+
+            const idx = lastSimulationData ? Math.min(lastSimulationData.years.length - 1, Math.round(animFrameFloat)) : 0;
+            const yr = lastSimulationData ? lastSimulationData.years[idx] : 2026;
+
+            // Solar cycle breathing on thermosphere
+            const solarCos = Math.cos(2 * Math.PI * (yr - 2025.5) / 11.0);
+            const atmoScale = 1.0 + 0.025 * solarCos;
+            atmoMesh.scale.setScalar(atmoScale);
+            atmoMat.opacity = 0.09 + 0.05 * Math.max(0, solarCos);
+
+            // Compute active fractions per class & shell
+            const fracs = {
+                X: { low: 0.2, medium: 0.15, high: 0.1 },
+                D10: { low: 0.15, medium: 0.35, high: 0.25 },
+                D1: { low: 0.12, medium: 0.35, high: 0.18 },
+                D01: { low: 0.15, medium: 0.45, high: 0.2 }
+            };
+
+            if (lastSimulationData) {
+                const pop = lastSimulationData.populations;
+                fracs.X.low = Math.min(1, pop.active_low[idx] / 75000);
+                fracs.X.medium = Math.min(1, pop.active_medium[idx] / 8000);
+                fracs.X.high = Math.min(1, pop.active_high[idx] / 3000);
+
+                fracs.D10.low = Math.min(1, pop.d10_low[idx] / 25000);
+                fracs.D10.medium = Math.min(1, pop.d10_medium[idx] / 35000);
+                fracs.D10.high = Math.min(1, pop.d10_high[idx] / 25000);
+
+                fracs.D1.low = Math.min(1, pop.d1_low[idx] / 1200000);
+                fracs.D1.medium = Math.min(1, pop.d1_medium[idx] / 1600000);
+                fracs.D1.high = Math.min(1, pop.d1_high[idx] / 600000);
+
+                fracs.D01.low = Math.min(1, pop.d01_low[idx] / 100000000);
+                fracs.D01.medium = Math.min(1, pop.d01_medium[idx] / 250000000);
+                fracs.D01.high = Math.min(1, pop.d01_high[idx] / 80000000);
+
+                const colls = lastSimulationData.collisions;
+                const rkM = lastSimulationData.reproduction_rk.medium[idx];
+                [['low', colls.low[idx], false], ['medium', colls.medium[idx], rkM >= 1.0], ['high', colls.high[idx], false]].forEach(([sh, rate, crit]) => {
+                    if (Math.random() < Math.min(0.22, rate * 0.08)) spawnShockwave3D(sh, crit);
+                });
+            }
+
+            // Update 3D particle positions
+            Object.entries(particleSystems).forEach(([key, sys]) => {
+                const posArr = sys.positions;
+                for (let i = 0; i < sys.count; i++) {
+                    const m = sys.meta[i];
+                    m.theta += m.speed * dt;
+                    const active = m.slot <= fracs[key][m.shell];
+                    if (!active) {
+                        posArr[i * 3] = 9999; posArr[i * 3 + 1] = 9999; posArr[i * 3 + 2] = 9999;
+                    } else {
+                        const v = orbitalToVec3(m.r, m.incl, m.raan, m.theta);
+                        posArr[i * 3] = v.x; posArr[i * 3 + 1] = v.y; posArr[i * 3 + 2] = v.z;
+                    }
+                }
+                sys.geo.attributes.position.needsUpdate = true;
+            });
+
+            // Update 3D shockwaves
+            for (let i = shockwaves3d.length - 1; i >= 0; i--) {
+                const sw = shockwaves3d[i];
+                sw.age += dt;
+                sw.mesh.scale.setScalar(1.0 + sw.age * 7.5);
+                sw.mesh.material.opacity = Math.max(0, 0.9 - sw.age * 1.1);
+                if (sw.age > 0.85) {
+                    scene.remove(sw.mesh);
+                    sw.mesh.geometry.dispose();
+                    sw.mesh.material.dispose();
+                    shockwaves3d.splice(i, 1);
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const p = PRESETS['realistic_2026'];
+            if (p) presetDesc.textContent = p.description;
+            updateSliderLabels();
+            triggerSimulation();
+            requestAnimationFrame(animate3D);
+
+            // Feedback modal logic
+            const fbModal = document.getElementById('feedbackModal');
+            const openModal = () => fbModal.classList.remove('hidden');
+            const closeModal = () => fbModal.classList.add('hidden');
+            document.getElementById('openFeedbackBtn')?.addEventListener('click', openModal);
+            document.getElementById('openFeedbackFooterBtn')?.addEventListener('click', openModal);
+            document.getElementById('closeFeedbackBtn')?.addEventListener('click', closeModal);
+            fbModal?.addEventListener('click', (e) => { if (e.target === fbModal) closeModal(); });
+
+            document.getElementById('modalFeedbackForm')?.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const btn = document.getElementById('mFbSubmitBtn');
+                const status = document.getElementById('mFbStatus');
+                btn.disabled = true;
+                status.textContent = 'Wysyłanie...';
+                status.className = 'text-[11px] text-slate-400';
+                try {
+                    const res = await fetch('/api/feedback', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            author: document.getElementById('mFbAuthor').value,
+                            category: document.getElementById('mFbCategory').value,
+                            message: document.getElementById('mFbMessage').value
+                        })
+                    });
+                    const d = await res.json();
+                    if (!res.ok || d.error) throw new Error(d.error || 'Błąd');
+                    status.textContent = d.message;
+                    status.className = 'text-[11px] text-emerald-400';
+                    document.getElementById('mFbMessage').value = '';
+                } catch (err) {
+                    status.textContent = err.message;
+                    status.className = 'text-[11px] text-rose-400';
+                } finally {
+                    btn.disabled = false;
+                }
+            });
+        });
+    </script>
+</body>
+</html>

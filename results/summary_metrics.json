@@ -1,0 +1,26 @@
+{
+  "n_samples": 1000,
+  "elapsed_seconds": 12.890591621398926,
+  "system_prob_2050_median": 0.016343438605122274,
+  "system_prob_2100_median": 0.06546067676932038,
+  "sensitivity": [
+    {
+      "Parametr": "beta_multiplier",
+      "Korelacja z Ryzykiem": 0.4764,
+      "Standaryzowany Wpływ (Beta)": 0.4831,
+      "Kierunek Wpływu": "Zwiększa ryzyko"
+    },
+    {
+      "Parametr": "growth_multiplier",
+      "Korelacja z Ryzykiem": 0.1304,
+      "Standaryzowany Wpływ (Beta)": 0.149,
+      "Kierunek Wpływu": "Zwiększa ryzyko"
+    },
+    {
+      "Parametr": "pmd_compliance_shift",
+      "Korelacja z Ryzykiem": -0.0001,
+      "Standaryzowany Wpływ (Beta)": 0.0195,
+      "Kierunek Wpływu": "Zwiększa ryzyko"
+    }
+  ]
+}

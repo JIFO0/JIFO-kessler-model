@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="pl" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Źródła i informacje — Symulator Ryzyka Kesslera</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Inter"', 'system-ui', '-apple-system', 'sans-serif']
+                    },
+                    colors: {
+                        obs: {
+                            950: '#06080C',
+                            900: '#0B0E14',
+                            850: '#10141D',
+                            800: '#151B26',
+                            700: '#1E2636',
+                            600: '#2B364B'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #06080C; color: #E2E8F0; font-family: 'Inter', system-ui, sans-serif; }
+        .tabular { font-variant-numeric: tabular-nums; }
+        .panel { background-color: #0B0E14; border: 1px solid #1E2636; border-radius: 6px; }
+        .panel-inner { background-color: #10141D; border: 1px solid #1E2636; border-radius: 4px; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased">
+
+    <!-- Header -->
+    <header class="bg-obs-900 border-b border-obs-700 px-5 py-3 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-50">
+        <div class="flex items-center gap-6">
+            <a href="/" class="flex items-center gap-3 group">
+                <div class="w-8 h-8 rounded border border-sky-500/40 bg-sky-500/10 flex items-center justify-center">
+                    <svg class="w-4 h-4 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <circle cx="12" cy="12" r="4"/>
+                        <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(28 12 12)"/>
+                        <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(-28 12 12)"/>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-sm font-semibold text-slate-100 group-hover:text-sky-400 transition-colors">
+                        Symulator Ryzyka Kesslera
+                    </h1>
+                    <p class="text-[11px] text-slate-400">Horyzont 2026–2126 &middot; Warstwy LEO</p>
+                </div>
+            </a>
+
+            <nav class="flex items-center gap-1 text-xs">
+                <a href="/" class="px-3 py-1.5 rounded text-slate-300 hover:text-white hover:bg-obs-800 transition-colors">Symulator</a>
+                <a href="/zrodla" class="px-3 py-1.5 rounded bg-obs-800 text-sky-400 font-medium">Źródła i twórca</a>
+            </nav>
+        </div>
+
+        <a href="https://jifo.dev" target="_blank" rel="noopener noreferrer" class="text-xs text-slate-400 hover:text-sky-400 transition-colors">
+            jifo.dev
+        </a>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 max-w-4xl w-full mx-auto p-5 lg:p-8 space-y-6">
+
+        <!-- Creator Section -->
+        <section class="panel p-6 space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-obs-700 pb-3">
+                <div>
+                    <h2 class="text-base font-semibold text-slate-100">O twórcy symulatora — Iwo Laskowski (@jifo)</h2>
+                    <p class="text-xs text-slate-400 mt-0.5">Student ekonomii na Uniwersytecie Gdańskim &middot; Full-Stack, DevOps &amp; Systems Programmer z Gdyni</p>
+                </div>
+                <a href="https://jifo.dev" target="_blank" rel="noopener noreferrer" class="text-xs font-medium text-sky-400 hover:text-sky-300">
+                    jifo.dev &rarr;
+                </a>
+            </div>
+            <p class="text-sm text-slate-300 leading-relaxed">
+                Projekt został stworzony przez <a href="https://jifo.dev" target="_blank" rel="noopener noreferrer" class="text-sky-400 hover:underline font-medium">Iwo Laskowskiego (jifo.dev)</a> — łączącego analizę ekonomiczną (Wydział Ekonomiczny UG) z inżynierią oprogramowania, modelowaniem symulacyjnym i infrastrukturą DevOps. Symulator łączy teorię ekonomii zasobów wspólnych z fizyką orbitalną oraz wizualizacją 3D.
+            </p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div class="panel-inner p-3.5 space-y-1">
+                    <div class="font-semibold text-slate-200">Wybrane projekty</div>
+                    <p class="text-slate-400 leading-relaxed">
+                        Silnik RTS <em>FieldBreak</em> (Godot 4), wieloagentowy prototyp <em>dAIplomacy</em>, klaster homelab <em>JIFOCC</em> oraz platforma Kół Studenckich UG (<code>kola.ug.edu.pl</code>).
+                    </p>
+                </div>
+                <div class="panel-inner p-3.5 space-y-1">
+                    <div class="font-semibold text-slate-200">Kontakt i linki</div>
+                    <div class="flex flex-wrap gap-x-3 gap-y-1 text-sky-400 pt-0.5">
+                        <a href="https://jifo.dev" target="_blank" rel="noopener noreferrer" class="hover:underline">jifo.dev</a>
+                        <a href="https://jifo.dev/cv" target="_blank" rel="noopener noreferrer" class="hover:underline">CV</a>
+                        <a href="https://jifo.dev/realizacje" target="_blank" rel="noopener noreferrer" class="hover:underline">Realizacje</a>
+                        <a href="https://github.com/JIFO0" target="_blank" rel="noopener noreferrer" class="hover:underline">GitHub</a>
+                        <a href="mailto:iwo@laskowski.pro" class="hover:underline">iwo@laskowski.pro</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Scientific Sources -->
+        <section class="panel p-6 space-y-4">
+            <h2 class="text-base font-semibold text-slate-100 border-b border-obs-700 pb-3">
+                Źródła naukowe i kalibracja danych
+            </h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div class="panel-inner p-4 space-y-1.5">
+                    <div class="font-semibold text-slate-100">ESA Space Debris Environment Report / MASTER-8 (2026)</div>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        Kalibracja stanów początkowych populacji na rok 2026: ok. 11 300 aktywnych satelitów, 57 150 nieaktywnych obiektów &gt;10 cm, 1,5 mln odłamków 1–10 cm oraz 230 mln mikroodłamków 1 mm–1 cm.
+                    </p>
+                </div>
+
+                <div class="panel-inner p-4 space-y-1.5">
+                    <div class="font-semibold text-slate-100">NASA Standard Satellite Breakup Model (SSBM)</div>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        Prawo potęgowe fragmentacji <i>N</i>(<i>L</i><sub>c</sub>) = 0.1 &middot; <i>M</i><sup>0.75</sup> &middot; <i>L</i><sub>c</sub><sup>&minus;1.71</sup> określające liczbę odłamków powstających w kolizjach katastroficznych (energia &ge; 40 kJ/kg).
+                    </p>
+                </div>
+
+                <div class="panel-inner p-4 space-y-1.5">
+                    <div class="font-semibold text-slate-100">Rao &amp; Rondina (2025) — Ekonomia orbity</div>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        Ujęcie przestrzeni orbitalnej jako otwartego zasobu wspólnego (Open-Access Commons) z logistycznym nasyceniem rynku startów oraz epidemiologicznym wskaźnikiem reprodukcji <i>R</i><sub>K</sub>.
+                    </p>
+                </div>
+
+                <div class="panel-inner p-4 space-y-1.5">
+                    <div class="font-semibold text-slate-100">Regulacje FCC (reguła 5 lat) i ESA Zero Debris</div>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        Parametryzacja dyscypliny deorbitacji po zakończeniu misji (PMD) oraz czasu życia satelitów w pasmach Low LEO (200–600 km), Medium LEO (600–1100 km) i High LEO (1100–2000 km).
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Feedback Form (Discord Webhook ready) -->
+        <section class="panel p-6 space-y-4">
+            <div class="border-b border-obs-700 pb-3">
+                <h2 class="text-base font-semibold text-slate-100">Prześlij opinię o stronie</h2>
+                <p class="text-xs text-slate-400 mt-1">
+                    Uwagi, zgłoszenia błędów i sugestie dotyczące modelu trafiają przez webhook Discord (obecnie w trybie lokalnego bufora).
+                </p>
+            </div>
+
+            <form id="feedbackForm" class="space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="fbAuthor" class="block text-xs font-medium text-slate-300 mb-1.5">Autor / Nick (opcjonalnie)</label>
+                        <input id="fbAuthor" type="text" maxlength="60" placeholder="Anonim" class="w-full bg-obs-850 border border-obs-700 rounded px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-sky-500">
+                    </div>
+                    <div>
+                        <label for="fbCategory" class="block text-xs font-medium text-slate-300 mb-1.5">Kategoria</label>
+                        <select id="fbCategory" class="w-full bg-obs-850 border border-obs-700 rounded px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-sky-500">
+                            <option value="Opinia">Opinia ogólna</option>
+                            <option value="Sugestia">Sugestia funkcji</option>
+                            <option value="Błąd">Zgłoszenie błędu</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label for="fbMessage" class="block text-xs font-medium text-slate-300 mb-1.5">Treść wiadomości</label>
+                    <textarea id="fbMessage" rows="4" required minlength="3" maxlength="1500" placeholder="Napisz, co działa dobrze lub co warto poprawić..." class="w-full bg-obs-850 border border-obs-700 rounded px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-sky-500"></textarea>
+                </div>
+
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <span id="fbStatus" class="text-xs text-slate-400"></span>
+                    <button type="submit" id="fbSubmitBtn" class="px-4 py-2 rounded bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold transition-colors">
+                        Wyślij opinię
+                    </button>
+                </div>
+            </form>
+        </section>
+
+    </main>
+
+    <footer class="border-t border-obs-700 bg-obs-900 py-3.5 px-6 text-center text-xs text-slate-500">
+        Symulator Ryzyka Kesslera &middot; Twórca: <a href="https://jifo.dev" target="_blank" rel="noopener noreferrer" class="text-slate-300 hover:text-sky-400">Iwo Laskowski (jifo.dev)</a> &middot; <a href="/zrodla" class="text-slate-300 hover:text-sky-400">Źródła</a>
+    </footer>
+
+    <script>
+        document.getElementById('feedbackForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('fbSubmitBtn');
+            const status = document.getElementById('fbStatus');
+            btn.disabled = true;
+            status.textContent = 'Wysyłanie...';
+            status.className = 'text-xs text-slate-400';
+
+            try {
+                const res = await fetch('/api/feedback', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        author: document.getElementById('fbAuthor').value,
+                        category: document.getElementById('fbCategory').value,
+                        message: document.getElementById('fbMessage').value
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok || data.error) throw new Error(data.error || 'Błąd wysyłki');
+                status.textContent = data.message;
+                status.className = 'text-xs text-emerald-400';
+                document.getElementById('fbMessage').value = '';
+            } catch (err) {
+                status.textContent = err.message;
+                status.className = 'text-xs text-rose-400';
+            } finally {
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
